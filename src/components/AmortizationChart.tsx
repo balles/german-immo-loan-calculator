@@ -1,6 +1,8 @@
 import {
   BarChart,
   Bar,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -262,6 +264,61 @@ export function AmortizationChart({ schedule, loans }: Props) {
             <Bar dataKey="Raten" stackId="a" fill="#93c5fd" isAnimationActive={false} />
             <Bar dataKey="Sondertilgung" stackId="a" fill="#fbbf24" isAnimationActive={false} />
           </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Restschuldverlauf line chart */}
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="mb-1 text-sm font-semibold text-slate-700">Restschuldverlauf</h3>
+        <p className="mb-4 text-xs text-slate-400">Restschuld je Kredit und gesamt</p>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart
+            data={schedule.map((y) => {
+              const entry: Record<string, number> = { year: y.year, Gesamt: y.totalRemainingDebt };
+              loans.forEach((l) => {
+                const ld = y.loanData.find((d) => d.loanId === l.id);
+                entry[l.name] = ld?.remainingDebt ?? 0;
+              });
+              return entry;
+            })}
+            margin={{ top: 10, right: 20, left: 20, bottom: 0 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis
+              dataKey="year"
+              tick={{ fontSize: 11 }}
+              label={{ value: 'Jahr', position: 'insideBottom', offset: -5, fontSize: 11 }}
+            />
+            <YAxis
+              tickFormatter={(v) => `${Math.round(v / 1000)}k €`}
+              tick={{ fontSize: 10 }}
+              width={70}
+            />
+            <Tooltip
+              formatter={(value, name) => [formatEur(value as number), name]}
+              labelFormatter={(label) => `Jahr ${label}`}
+              contentStyle={{ fontSize: 12 }}
+            />
+            <Legend wrapperStyle={{ fontSize: 11, paddingTop: 16 }} />
+            {loans.map((loan, idx) => (
+              <Line
+                key={loan.id}
+                dataKey={loan.name}
+                stroke={LOAN_COLORS[idx % LOAN_COLORS.length].interest}
+                strokeWidth={1.5}
+                strokeDasharray="5 3"
+                dot={false}
+                isAnimationActive={false}
+              />
+            ))}
+            <Line
+              dataKey="Gesamt"
+              stroke="#475569"
+              strokeWidth={2.5}
+              dot={false}
+              isAnimationActive={false}
+            />
+          </LineChart>
         </ResponsiveContainer>
       </div>
 

@@ -39,10 +39,19 @@ const EquityDataSchema = z.object({
   equity: z.number().min(0),
 });
 
+const ComparisonScenarioSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  property: PropertyDataSchema,
+  equityData: EquityDataSchema,
+  loans: z.array(LoanSchema),
+});
+
 export const ImportedStateSchema = z.object({
   version: z.number().int().optional(),
   name: z.string().optional().default(''),
   property: PropertyDataSchema,
   equityData: EquityDataSchema,
   loans: z.array(LoanSchema),
+  comparisonScenarios: z.array(ComparisonScenarioSchema).optional().default([]),
 });
