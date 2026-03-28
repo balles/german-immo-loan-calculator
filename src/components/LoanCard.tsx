@@ -271,21 +271,6 @@ export function LoanCard({ loan, onChange, onRemove, onAddFollowUp, onSyncFollow
               />
             </Field>
 
-            <Field
-              label="Anschlusszins (Schätzung)"
-              info={
-                loan.followUpRate === 0
-                  ? 'Bitte Anschlusszins schätzen oder separaten Kredit anlegen'
-                  : undefined
-              }
-            >
-              <NumInput
-                value={loan.followUpRate}
-                onChange={(v) => onChange({ ...loan, followUpRate: v })}
-                suffix="%"
-                step={0.1}
-              />
-            </Field>
           </>
         )}
 
