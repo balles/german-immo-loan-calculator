@@ -69,7 +69,7 @@ export function PropertyBlock({ property, onChange }: Props) {
           onChange={(v) => onChange({ ...property, propertyTransferTax: v })}
           suffix="%"
           step={0.1}
-          hint="Default: 3,5 % (Bayern)"
+          hint="Default: 3,5 %"
         />
         <NumInput
           label="Notar & Grundbuch"
