@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: "!startsWith(github.event.head_commit.message, 'chore: release v')"
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine bump type
+        id: bump
+        run: |
+          MSG="${{ github.event.head_commit.message }}"
+          if echo "$MSG" | grep -qiE "Merge (pull request|branch).*(feature/|feat/)"; then
+            echo "type=minor" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=patch" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Read current version
+        id: current
+        run: |
+          VERSION=$(grep -oP "(?<=APP_VERSION = ')[^']+" immo-app/src/version.ts)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Compute next version
+        id: next
+        run: |
+          IFS='.' read -r MAJOR MINOR PATCH <<< "${{ steps.current.outputs.version }}"
+          if [ "${{ steps.bump.outputs.type }}" = "minor" ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+          else
+            PATCH=$((PATCH + 1))
+          fi
+          echo "version=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Update version.ts
+        run: |
+          NEW="${{ steps.next.outputs.version }}"
+          sed -i "s/APP_VERSION = '[^']*'/APP_VERSION = '${NEW}'/" immo-app/src/version.ts
+
+      - name: Commit and tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add immo-app/src/version.ts
+          git commit -m "chore: release v${{ steps.next.outputs.version }}"
+          git tag "v${{ steps.next.outputs.version }}"
+          git push
+          git push --tags
