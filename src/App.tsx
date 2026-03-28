@@ -6,6 +6,7 @@ import { EquityBlock } from './components/EquityBlock';
 import { LoansBlock } from './components/LoansBlock';
 import { MetricsHeader } from './components/MetricsHeader';
 import { AmortizationChart } from './components/AmortizationChart';
+import { APP_VERSION, STATE_VERSION } from './version';
 
 const INITIAL_STATE: AppState = {
   name: '',
@@ -22,7 +23,13 @@ const INITIAL_STATE: AppState = {
 };
 
 function exportPlan(state: AppState) {
-  const payload = { name: state.name, property: state.property, equityData: state.equityData, loans: state.loans };
+  const payload = {
+    version: STATE_VERSION,
+    name: state.name,
+    property: state.property,
+    equityData: state.equityData,
+    loans: state.loans,
+  };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -44,7 +51,8 @@ function importPlan(file: File, onSuccess: (state: Partial<AppState>) => void, o
         onError();
         return;
       }
-      onSuccess({ name: parsed.name ?? '', property: parsed.property, equityData: parsed.equityData, loans: parsed.loans });
+      const migrated = migrateState(parsed);
+      onSuccess({ name: migrated.name as string ?? '', property: migrated.property as AppState['property'], equityData: migrated.equityData as AppState['equityData'], loans: migrated.loans as AppState['loans'] });
     } catch {
       onError();
     }
@@ -54,22 +62,35 @@ function importPlan(file: File, onSuccess: (state: Partial<AppState>) => void, o
 
 const STORAGE_KEY = 'immo-plan';
 
-function migrateLoan(l: Record<string, unknown>) {
-  return {
-    ...l,
-    extraPaymentMaxPercent: l.extraPaymentMaxPercent ?? 0,
-    scheduledExtraPayments: l.scheduledExtraPayments ?? [],
-    startYear: l.startYear ?? 1,
-  };
+// ---------------------------------------------------------------------------
+// State migrations — add a new case for each STATE_VERSION bump
+// ---------------------------------------------------------------------------
+function migrateState(parsed: Record<string, unknown>): Record<string, unknown> {
+  const version = (parsed.version as number) ?? 0;
+
+  // v0 → v1: add extraPaymentMaxPercent, scheduledExtraPayments, startYear to loans
+  if (version < 1) {
+    parsed.loans = (parsed.loans as Record<string, unknown>[]).map((l) => ({
+      ...l,
+      extraPaymentMaxPercent: l.extraPaymentMaxPercent ?? 0,
+      scheduledExtraPayments: l.scheduledExtraPayments ?? [],
+      startYear: l.startYear ?? 1,
+    }));
+  }
+
+  // future: if (version < 2) { ... }
+
+  parsed.version = STATE_VERSION;
+  return parsed;
 }
 
 function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return INITIAL_STATE;
-    const parsed = JSON.parse(raw);
+    let parsed = JSON.parse(raw);
     if (!parsed.property || !parsed.equityData || !Array.isArray(parsed.loans)) return INITIAL_STATE;
-    parsed.loans = parsed.loans.map(migrateLoan);
+    parsed = migrateState(parsed);
     return { ...INITIAL_STATE, ...parsed };
   } catch {
     return INITIAL_STATE;
@@ -103,7 +124,10 @@ export default function App() {
       <header className="border-b border-slate-200 bg-white shadow-sm">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-bold text-slate-800">Immobilien-Finanzierungsrechner</h1>
+            <h1 className="text-xl font-bold text-slate-800">
+              Immobilien-Finanzierungsrechner
+              <span className="ml-2 text-xs font-normal text-slate-400">v{APP_VERSION}</span>
+            </h1>
             <input
               type="text"
               value={state.name}
