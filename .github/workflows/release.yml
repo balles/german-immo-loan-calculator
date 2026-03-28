@@ -61,3 +61,6 @@ jobs:
           git tag "v${{ steps.next.outputs.version }}"
           git push
           git push --tags
+
+      - name: Trigger Vercel deploy
+        run: curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK }}"
