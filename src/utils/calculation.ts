@@ -1,4 +1,4 @@
-import type { Loan, YearlyData, LoanYearlyData } from '../types';
+import type { Loan, YearlyData, LoanYearlyData, PropertyData, ScenarioMetrics } from '../types';
 import { calculateKfwMonthlyPayment, isKfwTermComplete } from './kfwCalculation';
 import { simulateYearPayments, getEffectiveRate, applyExtraPayments } from './annuityCalculation';
 
@@ -23,6 +23,45 @@ export function formatEur(value: number, decimals = 0): string {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(value);
+}
+
+export function computeScenarioMetrics(
+  property: PropertyData,
+  equity: number,
+  loans: Loan[],
+  schedule: YearlyData[],
+): ScenarioMetrics {
+  const purchaseSideCosts =
+    property.purchasePrice *
+    ((property.propertyTransferTax + property.notaryFees + property.agentCommission) / 100);
+  const totalRequirement = property.purchasePrice + purchaseSideCosts + property.renovationCosts;
+  const totalInterestCosts = schedule.reduce((s, y) => s + y.totalInterest, 0);
+  const fullRepaymentYear = schedule.length > 0 ? schedule[schedule.length - 1].year : 0;
+  const fullRepaymentAbsoluteYear =
+    fullRepaymentYear > 0 ? new Date().getFullYear() + fullRepaymentYear - 1 : 0;
+  const kfwGrant = loans
+    .filter((l) => l.type === 'kfw261')
+    .reduce((s, l) => s + (l.repaymentGrantEur ?? 0), 0);
+
+  const activeYears = schedule.filter((y) => y.totalPayment > 0);
+  const avgMonthlyRate =
+    activeYears.length > 0
+      ? activeYears.reduce((s, y) => s + y.totalPayment, 0) / activeYears.length
+      : 0;
+  const maxMonthlyRate =
+    schedule.length > 0 ? Math.max(...schedule.map((y) => y.totalPayment)) : 0;
+
+  return {
+    totalRequirement,
+    equity,
+    totalMonthlyPaymentYear1: schedule.length > 0 ? schedule[0].totalPayment : 0,
+    totalInterestCosts,
+    fullRepaymentYear,
+    fullRepaymentAbsoluteYear,
+    kfwGrant,
+    avgMonthlyRate,
+    maxMonthlyRate,
+  };
 }
 
 export function formatPercent(value: number): string {

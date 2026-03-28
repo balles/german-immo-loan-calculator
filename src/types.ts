@@ -40,12 +40,33 @@ export interface EquityData {
   equity: number;
 }
 
+export interface ComparisonScenario {
+  id: string;
+  name: string;
+  property: PropertyData;
+  equityData: EquityData;
+  loans: Loan[];
+}
+
+export interface ScenarioMetrics {
+  totalRequirement: number;
+  equity: number;
+  totalMonthlyPaymentYear1: number;
+  totalInterestCosts: number;
+  fullRepaymentYear: number;
+  fullRepaymentAbsoluteYear: number;
+  kfwGrant: number;
+  avgMonthlyRate: number;
+  maxMonthlyRate: number;
+}
+
 export interface AppState {
   name: string;
   property: PropertyData;
   equityData: EquityData;
   loans: Loan[];
-  activeTab: 'input' | 'evaluation';
+  activeTab: 'input' | 'evaluation' | 'comparison';
+  comparisonScenarios: ComparisonScenario[];
 }
 
 export interface YearlyData {

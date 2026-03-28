@@ -1,11 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import type { AppState } from './types';
-import { calculateLoanSchedule } from './utils/calculation';
+import type { AppState, ComparisonScenario } from './types';
+import { calculateLoanSchedule, generateId } from './utils/calculation';
 import { PropertyBlock } from './components/PropertyBlock';
 import { EquityBlock } from './components/EquityBlock';
 import { LoansBlock } from './components/LoansBlock';
 import { MetricsHeader } from './components/MetricsHeader';
 import { AmortizationChart } from './components/AmortizationChart';
+import { ComparisonTab } from './components/ComparisonTab';
 import { APP_VERSION, STATE_VERSION } from './version';
 import { ImportedStateSchema } from './utils/schemas';
 
@@ -21,6 +22,7 @@ const INITIAL_STATE: AppState = {
   equityData: { equity: 0 },
   loans: [],
   activeTab: 'input',
+  comparisonScenarios: [],
 };
 
 function exportPlan(state: AppState) {
@@ -84,7 +86,10 @@ function migrateState(parsed: Record<string, unknown>): Record<string, unknown> 
     }));
   }
 
-  // future: if (version < 2) { ... }
+  // v1 → v2: add comparisonScenarios
+  if (version < 2) {
+    parsed.comparisonScenarios = parsed.comparisonScenarios ?? [];
+  }
 
   parsed.version = STATE_VERSION;
   return parsed;
@@ -126,6 +131,38 @@ export default function App() {
   const financingRequirement = totalRequirement - state.equityData.equity;
 
   const schedule = useMemo(() => calculateLoanSchedule(state.loans), [state.loans]);
+
+  function handleAddSnapshot(name: string) {
+    const snapshot: ComparisonScenario = {
+      id: generateId(),
+      name: name.trim() || state.name || 'Szenario',
+      property: state.property,
+      equityData: state.equityData,
+      loans: state.loans,
+    };
+    setState((s) => ({ ...s, comparisonScenarios: [...s.comparisonScenarios, snapshot] }));
+  }
+
+  function handleImportScenario(file: File, onError: () => void) {
+    importPlan(
+      file,
+      (parsed) => {
+        const scenario: ComparisonScenario = {
+          id: generateId(),
+          name: parsed.name || 'Importiert',
+          property: parsed.property!,
+          equityData: parsed.equityData!,
+          loans: parsed.loans!,
+        };
+        setState((s) => ({ ...s, comparisonScenarios: [...s.comparisonScenarios, scenario] }));
+      },
+      onError,
+    );
+  }
+
+  function handleRemoveScenario(id: string) {
+    setState((s) => ({ ...s, comparisonScenarios: s.comparisonScenarios.filter((sc) => sc.id !== id) }));
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -186,7 +223,7 @@ export default function App() {
       <div className="border-b border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-4">
           <nav className="flex gap-1">
-            {(['input', 'evaluation'] as const).map((tab) => (
+            {(['input', 'evaluation', 'comparison'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setState((s) => ({ ...s, activeTab: tab }))}
@@ -196,7 +233,7 @@ export default function App() {
                     : 'text-slate-500 hover:text-slate-700'
                 }`}
               >
-                {tab === 'input' ? 'Eingabe' : 'Auswertung'}
+                {tab === 'input' ? 'Eingabe' : tab === 'evaluation' ? 'Auswertung' : 'Vergleich'}
               </button>
             ))}
           </nav>
@@ -223,15 +260,24 @@ export default function App() {
               onChange={(loans) => setState((s) => ({ ...s, loans }))}
             />
           </div>
-        ) : (
+        ) : state.activeTab === 'evaluation' ? (
           <div className="flex flex-col gap-6">
             <MetricsHeader
               property={state.property}
+              equityData={state.equityData}
               loans={state.loans}
               schedule={schedule}
             />
             <AmortizationChart schedule={schedule} loans={state.loans} />
           </div>
+        ) : (
+          <ComparisonTab
+            currentState={state}
+            currentSchedule={schedule}
+            onAddSnapshot={handleAddSnapshot}
+            onImportScenario={handleImportScenario}
+            onRemoveScenario={handleRemoveScenario}
+          />
         )}
       </main>
     </div>
