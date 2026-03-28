@@ -7,6 +7,7 @@ import { LoansBlock } from './components/LoansBlock';
 import { MetricsHeader } from './components/MetricsHeader';
 import { AmortizationChart } from './components/AmortizationChart';
 import { APP_VERSION, STATE_VERSION } from './version';
+import { ImportedStateSchema } from './utils/schemas';
 
 const INITIAL_STATE: AppState = {
   name: '',
@@ -51,8 +52,13 @@ function importPlan(file: File, onSuccess: (state: Partial<AppState>) => void, o
         onError();
         return;
       }
-      const migrated = migrateState(parsed);
-      onSuccess({ name: migrated.name as string ?? '', property: migrated.property as AppState['property'], equityData: migrated.equityData as AppState['equityData'], loans: migrated.loans as AppState['loans'] });
+      const result = ImportedStateSchema.safeParse(migrateState(parsed));
+      if (!result.success) {
+        console.warn('Import validation failed:', result.error.flatten());
+        onError();
+        return;
+      }
+      onSuccess(result.data);
     } catch {
       onError();
     }
@@ -88,10 +94,13 @@ function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return INITIAL_STATE;
-    let parsed = JSON.parse(raw);
-    if (!parsed.property || !parsed.equityData || !Array.isArray(parsed.loans)) return INITIAL_STATE;
-    parsed = migrateState(parsed);
-    return { ...INITIAL_STATE, ...parsed };
+    const json = JSON.parse(raw);
+    const result = ImportedStateSchema.safeParse(migrateState(json));
+    if (!result.success) {
+      console.warn('Stored state failed validation, resetting.', result.error.flatten());
+      return INITIAL_STATE;
+    }
+    return { ...INITIAL_STATE, ...result.data };
   } catch {
     return INITIAL_STATE;
   }
