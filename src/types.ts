@@ -51,13 +51,14 @@ export interface ComparisonScenario {
 export interface ScenarioMetrics {
   totalRequirement: number;
   equity: number;
+  totalLoanAmount: number;
   totalMonthlyPaymentYear1: number;
+  monthlyRateByDecade: { decade: number; avg: number }[];
+  maxMonthlyRate: number;
   totalInterestCosts: number;
   fullRepaymentYear: number;
   fullRepaymentAbsoluteYear: number;
   kfwGrant: number;
-  avgMonthlyRate: number;
-  maxMonthlyRate: number;
 }
 
 export interface AppState {

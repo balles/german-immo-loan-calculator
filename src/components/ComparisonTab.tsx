@@ -26,8 +26,8 @@ interface MetricDef {
 const METRICS: MetricDef[] = [
   { label: 'Gesamtbedarf', key: 'totalRequirement', direction: 'neutral', format: (v) => formatEur(v) },
   { label: 'Eigenkapital', key: 'equity', direction: 'neutral', format: (v) => formatEur(v) },
+  { label: 'Darlehensbetrag gesamt', key: 'totalLoanAmount', direction: 'neutral', format: (v) => formatEur(v) },
   { label: 'Monatliche Rate (Jahr 1)', key: 'totalMonthlyPaymentYear1', direction: 'lower', format: (v) => formatEur(v) },
-  { label: 'Ø Monatliche Rate', key: 'avgMonthlyRate', direction: 'lower', format: (v) => formatEur(v) },
   { label: 'Max. Monatliche Rate', key: 'maxMonthlyRate', direction: 'lower', format: (v) => formatEur(v) },
   { label: 'Gesamte Zinskosten', key: 'totalInterestCosts', direction: 'lower', format: (v) => formatEur(v) },
   {
@@ -119,6 +119,19 @@ export function ComparisonTab({
 
   const anyKfw = [currentMetrics, ...visibleMetrics].some((m) => m.kfwGrant > 0);
   const rows = anyKfw ? METRICS : METRICS.filter((m) => m.key !== 'kfwGrant');
+
+  // Per-loan rows: indexed by position across all visible scenarios
+  const allLoans = [currentState.loans, ...visibleScenarios.map((sc) => sc.loans)];
+  const maxLoanCount = Math.max(...allLoans.map((l) => l.length));
+
+  // Decade rows: union of decades across all visible scenarios
+  const allDecades = useMemo(() => {
+    const set = new Set<number>();
+    [currentMetrics, ...visibleMetrics].forEach((m) =>
+      m.monthlyRateByDecade.forEach((d) => set.add(d.decade)),
+    );
+    return Array.from(set).sort((a, b) => a - b);
+  }, [currentMetrics, visibleMetrics]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -277,6 +290,65 @@ export function ComparisonTab({
                 })}
               </tr>
             ))}
+
+            {/* Section: individual loans by position */}
+            {maxLoanCount > 0 && (
+              <tr className="bg-slate-100">
+                <td colSpan={2 + visibleScenarios.length} className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Einzelne Darlehen
+                </td>
+              </tr>
+            )}
+            {Array.from({ length: maxLoanCount }, (_, i) => (
+              <tr key={`loan-${i}`} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                <td className="px-4 py-2.5 text-xs text-slate-500">Darlehen {i + 1}</td>
+                {[currentState.loans, ...visibleScenarios.map((sc) => sc.loans)].map((loans, col) => {
+                  const loan = loans[i];
+                  return (
+                    <td key={col} className="px-4 py-2.5 text-right font-semibold text-slate-800">
+                      {loan ? (
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span>{formatEur(loan.loanAmount)}</span>
+                          <span className="text-xs font-normal text-slate-400">{loan.name}</span>
+                        </div>
+                      ) : '—'}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+
+            {/* Section: average monthly rate by decade */}
+            {allDecades.length > 0 && (
+              <tr className="bg-slate-100">
+                <td colSpan={2 + visibleScenarios.length} className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                  Ø Monatliche Rate
+                </td>
+              </tr>
+            )}
+            {allDecades.map((d, i) => {
+              const label = `Jahr ${(d - 1) * 10 + 1}–${d * 10}`;
+              const currentAvg = currentMetrics.monthlyRateByDecade.find((x) => x.decade === d)?.avg ?? 0;
+              return (
+                <tr key={`decade-${d}`} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                  <td className="px-4 py-2.5 text-xs text-slate-500">{label}</td>
+                  <td className="px-4 py-2.5 text-right font-semibold text-slate-800">
+                    {currentAvg > 0 ? formatEur(currentAvg) : '—'}
+                  </td>
+                  {visibleMetrics.map((m, j) => {
+                    const avg = m.monthlyRateByDecade.find((x) => x.decade === d)?.avg ?? 0;
+                    return (
+                      <td key={visibleScenarios[j].id} className="px-4 py-2.5 text-right font-semibold text-slate-800">
+                        <div className="flex flex-col items-end gap-0.5">
+                          <span>{avg > 0 ? formatEur(avg) : '—'}</span>
+                          <PctBadge current={currentAvg} other={avg} direction="lower" />
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
