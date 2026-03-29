@@ -43,24 +43,34 @@ export function computeScenarioMetrics(
     .filter((l) => l.type === 'kfw261')
     .reduce((s, l) => s + (l.repaymentGrantEur ?? 0), 0);
 
-  const activeYears = schedule.filter((y) => y.totalPayment > 0);
-  const avgMonthlyRate =
-    activeYears.length > 0
-      ? activeYears.reduce((s, y) => s + y.totalPayment, 0) / activeYears.length
-      : 0;
+  const totalLoanAmount = loans.reduce((s, l) => s + l.loanAmount, 0);
   const maxMonthlyRate =
     schedule.length > 0 ? Math.max(...schedule.map((y) => y.totalPayment)) : 0;
+
+  const monthlyRateByDecade: { decade: number; avg: number }[] = [];
+  for (let d = 1; d <= 5; d++) {
+    const start = (d - 1) * 10 + 1;
+    const end = d * 10;
+    const years = schedule.filter((y) => y.year >= start && y.year <= end && y.totalPayment > 0);
+    if (years.length > 0) {
+      monthlyRateByDecade.push({
+        decade: d,
+        avg: years.reduce((s, y) => s + y.totalPayment, 0) / years.length,
+      });
+    }
+  }
 
   return {
     totalRequirement,
     equity,
+    totalLoanAmount,
     totalMonthlyPaymentYear1: schedule.length > 0 ? schedule[0].totalPayment : 0,
+    monthlyRateByDecade,
+    maxMonthlyRate,
     totalInterestCosts,
     fullRepaymentYear,
     fullRepaymentAbsoluteYear,
     kfwGrant,
-    avgMonthlyRate,
-    maxMonthlyRate,
   };
 }
 
