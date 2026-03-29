@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-03-29
+
 ### Changed
 - Comparison table: replaced overall average monthly rate with per-decade averages (Jahr 1–10, 11–20, …)
 - Comparison table: added total loan amount row and individual loan breakdown section (by position, with loan name as sub-text)
