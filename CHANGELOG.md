@@ -2,12 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased] — next
+## [Unreleased]
 
-## [Unreleased] — 1.1.0
+## [1.1.1] — 2026-03-29
+
+### Fixed
+- Added `environment: production` to release workflow job to access GitHub environment secrets (Vercel deploy hook)
+
+## [1.1.0] — 2026-03-28
 
 ### Added
-- **Szenariovergleich tab** — compare the current financing plan against up to N saved or imported scenarios
+- **Szenariovergleich tab** — compare the current financing plan against saved or imported scenarios
   - Save a snapshot of the current scenario with a custom name
   - Load additional scenarios from exported JSON files
   - Toggle scenario visibility via chips; remove scenarios individually
@@ -16,6 +21,7 @@ All notable changes to this project will be documented in this file.
   - Restschuldverlauf line chart across all visible scenarios
 - **Restschuldverlauf chart on Auswertung page** — line chart showing remaining debt per loan and total over time
 - **Donut chart for Aufschlüsselung Gesamtkosten** on the Auswertung page, replacing the horizontal bar breakdown
+- CHANGELOG.md with automated stamping on release
 
 ### Changed
 - State version bumped to 2; existing saved state migrates automatically (`comparisonScenarios: []` added)
